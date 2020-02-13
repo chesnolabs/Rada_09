@@ -218,8 +218,6 @@ act_amends_mps_perc <- out_act_amends %>%
 out_act_amends_factions_perc <- out_act_amends%>%
   left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
   filter(date_end=="")%>%                         # Прибираємо не депутатів
-  #filter(is.na(faction))%>%
-  #left_join(factions_09, by=c("mps_id"="rada_id"))%>%
   group_by(factions)%>%
   summarise(
     # У відсотках
@@ -237,4 +235,71 @@ out_act_amends_factions_perc_long <- out_act_amends_factions_perc%>%
   #mutate(faction = fct_reorder(faction, levels(out_act_amends_factions_perc$factions))) %>% 
   gather(status, n_vote, vote_for_perc:vote_absent_perc, factor_key = TRUE)%>%
   filter(!status=="vote_present_perc") # Фільтрує невідомий критерій з нулями.
+
+#### Крок. 9.7. По фракціях, % ####
+act_amends_faction_depart_perc <- out_act_amends%>%
+  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
+  filter(date_end=="")%>%                         # Прибираємо не депутатів
+  #filter(is.na(faction))%>%
+  #left_join(factions_09, by=c("mps_id"="rada_id"))%>%
+  group_by(faction.y, department)%>%
+  summarise(
+    # У відсотках
+    vote_for_perc = round(mean(vote_status == "За")*100, 1), 
+    vote_abstain_perc = round(mean(vote_status == "Утримався")*100, 1),
+    vote_against_perc = round(mean(vote_status == "Проти")*100, 1), 
+    vote_present_perc = round(mean(vote_status == "Присутній")*100, 1),
+    vote_not_voting_perc = round(mean(vote_status == "Не голосував")*100, 1),
+    vote_absent_perc = round(mean(vote_status == "Відсутній")*100, 1)) %>% 
+  arrange(vote_for_perc, faction.y)
+
+#### Крок. 9.8. По фракціях, %, long ####
+act_amends_faction_depart_perc_long <- act_amends_faction_depart_perc%>%
+  gather(status, n_vote, vote_for_perc:vote_absent_perc, factor_key = TRUE)%>%
+  filter(!status=="vote_present_perc") # Фільтрує невідомий критерій з нулями.
+
+#### Крок. 9.9. Скорочення назв гол.комітетів ####
+act_amends_faction_depart_perc_long <- act_amends_faction_depart_perc_long%>%
+  mutate(department = recode(department, 
+                             "Комітет Верховної Ради України з питань прав людини, деокупації та реінтеграції тимчасово окупованих територій у Донецькій, Луганській областях та Автономної Республіки Крим, міста Севастополя, національних меншин і міжнаціональних відносин" = "З прав людини, деокупації",
+                             "Комітет з питань організації державної влади, місцевого самоврядування, регіонального розвитку та містобудування" = "Держвлади і самоврядування",
+                             "Комітет з питань Регламенту, депутатської етики та організації роботи Верховної Ради України" = "Регламентний комітет",
+                             "Комітет з питань соціальної політики та захисту прав ветеранів" = "Соцполітика і захист ветеранів",
+                             "Комітет з питань інтеграції України з Європейським Союзом" = "Інтеграція з ЄС",
+                             "Комітет з питань зовнішньої політики та міжпарламентського співробітництва"="Зовнішня політика",
+                             "Комітет з питань енергетики та житлово-комунальних послуг"="Енергетика і ЖКГ",
+                             "Комітет з питань здоров'я нації, медичної допомоги та медичного страхування"="Медичний комітет",
+                             "Комітет з питань національної безпеки, оборони та розвідки"="Нацбезпеки і оборони",
+                             "Комітет з питань екологічної політики та природокористування"="Екологія і природа",
+                             "Комітет з питань антикорупційної політики"="Антикорупційний комітет",
+                             "Комітет з питань гуманітарної та інформаційної політики"="Гуманітарна і інформполітика",
+                             "Комітет з питань транспорту та інфраструктури"="Транспорт і інфраструктура",
+                             "Комітет з питань освіти, науки та інновацій"="Освіта і наука",
+                             "Комітет з питань аграрної та земельної політики"="Аграрний комітет",
+                             "Комітет з питань фінансів, податкової та митної політики"="Фінанси і податки",
+                             "Комітет з питань правоохоронної діяльності"="Правоохоронний",
+                             "Комітет з питань економічного розвитку"="Економрозвиток",
+                             "Комітет з питань бюджету"="Бюджетний комітет",
+                             "Комітет з питань правової політики"="Правова політика",
+                             "Комітет з питань цифрової трансформації"="Цифрова трансформація",
+                             "Комітет з питань молоді і спорту"="Молоді та спорту"))
+
+
+##### Записати файл: поправки 225+1 ####
+
+write.xlsx(as.data.frame(out_act_amends_factions_perc), 
+           file=paste0("output_cumulative/amends_voting", ".xlsx"),
+           sheetName="Фракції_за_поправки_226_%", row.names=FALSE, append = TRUE)
+
+write.xlsx(as.data.frame(act_amends_faction_depart_perc), 
+           file=paste0("output_cumulative/amends_voting", ".xlsx"),
+           sheetName="Фракції_за_поправки+комітет_226_%", row.names=FALSE, append = TRUE)
+
+write.xlsx(as.data.frame(act_amends_mps_n), 
+           file=paste0("output_cumulative/amends_voting", ".xlsx"),
+           sheetName="Нардепи_за_поправки_226_у_числах", row.names=FALSE, append = TRUE)
+
+write.xlsx(as.data.frame(act_amends_mps_perc), 
+           file=paste0("output_cumulative/amends_voting", ".xlsx"),
+           sheetName="Нардепи_за_поправки_226_у_%", row.names=FALSE, append = TRUE)
 
