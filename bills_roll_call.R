@@ -287,3 +287,207 @@ z_mps_depart_n <- zakon_out%>%
     vote_absent = sum(vote_status == "Відсутній"))%>%
   arrange(vote_for, factions)
 
+
+# III. ЗП без поправок ####
+# ZP without amendments = zp_wo_amends
+
+zp_wo_amends <- zp%>%
+  filter(!grepl("Поіменне голосування про поправку", name_event))
+
+# Як голосують по рубрикам ####
+
+zp_wo_rubrics <- zp_wo_amends%>%
+  group_by(rubric)%>%
+  summarise(n=n())%>%
+  ungroup()
+
+# Як голосують по головним комітетам ####
+
+zp_wo_depart<- zp_wo_amends%>%
+  group_by(department)%>%
+  summarise(n=n())%>%
+  ungroup()
+
+# Як голосують по головним комітетам і рубрикам ####
+
+zp_wo_dual<- zp_wo_amends%>%
+  group_by(department, rubric)%>%
+  summarise(n=n())%>%
+  ungroup()
+
+# Голосування лише за "проекти законів" ####
+zp_wo_out <- cSplit(zp_wo_amends, "results", sep="|", "long")%>%
+  separate(results, c("mps_id", "faction", "vote_status"), ":")%>%
+  mutate(faction = recode(faction,
+                          `0` = "Позафракційні",
+                          `1` = "Слуга Народу",
+                          `2` = "ОПЗЖ",
+                          `3` = "Батьківщина",
+                          `4` = "ЄС",
+                          `5` = "ГОЛОС",
+                          `6` = "За майбутнє",
+                          `7`="ДОВІРА"))%>%
+  mutate(vote_status = recode(vote_status,
+                              `0` = "Відсутній",
+                              `1` = "За",
+                              `2` = "Проти",
+                              `3` = "Утримався",
+                              `4` = "Не голосував",
+                              `5` = "Присутній"))%>%
+  left_join(mps09, by=c("mps_id"="id_mp"))%>%
+  left_join(factions_09, by=c("mps_id"="rada_id"))
+
+# ЗП по нардепам, абсол.числа  ####
+
+zp_wo_mps_n <- zp_wo_out %>%
+  group_by(name, factions)%>%
+  #group_by(name, faction)%>%
+  summarise(vote_for = sum(vote_status == "За"), 
+            vote_abstain = sum(vote_status == "Утримався"),
+            vote_against_ = sum(vote_status == "Проти"), 
+            vote_present = sum(vote_status == "Присутній"),
+            vote_not_voting = sum(vote_status == "Не голосував"),
+            vote_absent = sum(vote_status == "Відсутній")) %>% 
+  arrange(vote_for, name)%>%
+  left_join(mps_09, by=c("name"="full_name"))%>%
+  filter(date_end=="")%>%
+  select( -date_end)
+
+# ЗП по нардепах, % #### 
+
+zp_wo_mps_perc <- zp_wo_out %>%
+  #group_by(name, faction)%>%
+  group_by(name, factions)%>%
+  summarise(
+    # У відсотках
+    vote_for = round(mean(vote_status == "За")*100, 0), 
+    vote_abstain = round(mean(vote_status == "Утримався")*100, 0),
+    vote_against = round(mean(vote_status == "Проти")*100, 0), 
+    vote_present = round(mean(vote_status == "Присутній")*100, 0),
+    vote_not_voting = round(mean(vote_status == "Не голосував")*100, 0),
+    vote_absent = round(mean(vote_status == "Відсутній")*100, 0)) %>% 
+  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
+  filter(date_end=="")%>% 
+  arrange(vote_for, name)
+
+# Те саме, але з розбивкою по рубрикам, у відсотках
+
+zp_wo_mps_perc_rubric <- zp_wo_out %>%
+  #group_by(name, faction)%>%
+  group_by(name, factions, rubric)%>%
+  summarise(
+    # У відсотках
+    vote_for = round(mean(vote_status == "За")*100, 0), 
+    vote_abstain = round(mean(vote_status == "Утримався")*100, 0),
+    vote_against = round(mean(vote_status == "Проти")*100, 0), 
+    vote_present = round(mean(vote_status == "Присутній")*100, 0),
+    vote_not_voting = round(mean(vote_status == "Не голосував")*100, 0),
+    vote_absent = round(mean(vote_status == "Відсутній")*100, 0)) %>% 
+  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
+  filter(date_end=="")%>% 
+  arrange(vote_for, name)
+
+# ЗП по нардепах, %, Long ####
+
+zp_wo_mps_perc_rubric_long <- zp_wo_mps_perc_rubric%>%
+  gather(status, n_vote, vote_for:vote_absent, factor_key = TRUE)%>%
+  filter(!status=="vote_present")
+
+# ЗП по фракціях і головним комітетам, % ####
+zp_wo_faction_rubric_perc <- zp_wo_out%>%
+  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
+  filter(date_end=="")%>%   
+  group_by(factions, rubric)%>%
+  summarise(
+    # У відсотках
+    vote_for = round(mean(vote_status == "За")*100, 1), 
+    vote_abstain = round(mean(vote_status == "Утримався")*100, 1),
+    vote_against = round(mean(vote_status == "Проти")*100, 1),
+    vote_present = round(mean(vote_status == "Присутній")*100, 1),
+    vote_not_voting = round(mean(vote_status == "Не голосував")*100, 1),
+    vote_absent = round(mean(vote_status == "Відсутній")*100, 1)) %>% 
+  arrange(vote_for, factions)
+
+# ЗП по фракціях і головним комітетам, %, long ####
+zp_wo_faction_rubric_perc_long <- zp_wo_faction_rubric_perc%>%  
+  gather(status, n_vote, vote_for:vote_absent, factor_key = TRUE)%>%
+  filter(!status=="vote_present")
+
+# ЗП По фракціям, % ####
+
+zp_wo_factions_perc <- zp_wo_out%>%
+  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
+  filter(date_end=="")%>%   
+  group_by(factions)%>%
+  summarise(
+    # У відсотках
+    vote_for = round(mean(vote_status == "За")*100, 1), 
+    vote_abstain = round(mean(vote_status == "Утримався")*100, 1),
+    vote_against = round(mean(vote_status == "Проти")*100, 1), 
+    vote_present = round(mean(vote_status == "Присутній")*100, 1),
+    vote_not_voting = round(mean(vote_status == "Не голосував")*100, 1),
+    vote_absent = round(mean(vote_status == "Відсутній")*100, 1)) %>% 
+  mutate(factions=as.factor(factions))%>%
+  arrange(vote_for, factions)
+
+# ЗП По фракціям, %, long ####
+
+zp_wo_factions_perc_long <- zp_wo_factions_perc%>%
+  mutate(factions = fct_reorder(factions, levels(zp_wo_factions_perc$factions))) %>% 
+  gather(status, n_vote, vote_for:vote_absent, factor_key = TRUE)%>%
+  filter(!status=="vote_present")
+
+# ЗП по фракціям і Комітетами, % ####
+
+zp_wo_faction_depart_perc <- zp_wo_out%>%
+  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
+  filter(date_end=="")%>%   
+  group_by(factions, department)%>%
+  summarise(
+    # У відсотках
+    vote_for = round(mean(vote_status == "За")*100, 1), 
+    vote_abstain = round(mean(vote_status == "Утримався")*100, 1),
+    vote_against = round(mean(vote_status == "Проти")*100, 1), 
+    vote_present = round(mean(vote_status == "Присутній")*100, 1),
+    vote_not_voting = round(mean(vote_status == "Не голосував")*100, 1),
+    vote_absent = round(mean(vote_status == "Відсутній")*100, 1)) %>% 
+  arrange(vote_for, factions)
+
+# ЗП по фракціям і Комітетами, %, long ####
+
+zp_wo_faction_depart_perc_long <- zp_wo_faction_depart_perc%>%
+  gather(status, n_vote, vote_for:vote_absent, factor_key = TRUE)%>%
+  filter(!status=="vote_present")
+
+# ЗП по ПІБ, фракції і Комітетам, % ####
+
+zp_wo_mps_depart_perc <- zp_wo_out%>%
+  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
+  filter(date_end=="")%>%   
+  group_by(name, factions, department)%>%
+  summarise(
+    # У відсотках
+    vote_for = round(mean(vote_status == "За")*100, 1), 
+    vote_abstain = round(mean(vote_status == "Утримався")*100, 1),
+    vote_against = round(mean(vote_status == "Проти")*100, 1), 
+    vote_present = round(mean(vote_status == "Присутній")*100, 1),
+    vote_not_voting = round(mean(vote_status == "Не голосував")*100, 1),
+    vote_absent = round(mean(vote_status == "Відсутній")*100, 1)) %>% 
+  arrange(vote_for, factions)
+
+# ЗП по ПІБ, фракції і Комітетам, абсолютне число ####
+
+zp_wo_mps_depart_n <- zp_wo_out%>%
+  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
+  filter(date_end=="")%>%   
+  group_by(name, factions, department)%>%
+  summarise(
+    # У абсолютних числах
+    vote_for = sum(vote_status == "За"), 
+    vote_abstain = sum(vote_status == "Утримався"),
+    vote_against_ = sum(vote_status == "Проти"), 
+    vote_present = sum(vote_status == "Присутній"),
+    vote_not_voting = sum(vote_status == "Не голосував"),
+    vote_absent = sum(vote_status == "Відсутній"))%>%
+  arrange(vote_for, factions)
+
