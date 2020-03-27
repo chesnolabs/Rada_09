@@ -1,4 +1,5 @@
 # Для початку проженіть файл roll_call_voting.R
+# dir.create("output_cumulative")
 
 library(extrafont)
 library(extrafontdb)
