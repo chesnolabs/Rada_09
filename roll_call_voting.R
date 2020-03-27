@@ -216,7 +216,9 @@ out_factions_perc <- out%>%
     vote_not_voting_perc = round(mean(vote_status == "Не голосував")*100, 1),
     vote_absent_perc = round(mean(vote_status == "Відсутній")*100, 1)) %>% 
   mutate(factions=as.factor(factions))%>%
-  arrange(vote_for_perc, factions)
+  ungroup()%>%
+  mutate(uchast=vote_for_perc+vote_abstain_perc+vote_against_perc)%>%
+  arrange(uchast, factions)
 
 # 4.1.a) По фракціям у відсотках, long
 
