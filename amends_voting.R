@@ -242,7 +242,7 @@ act_amends_faction_depart_perc <- out_act_amends%>%
   filter(date_end=="")%>%                         # Прибираємо не депутатів
   #filter(is.na(faction))%>%
   #left_join(factions_09, by=c("mps_id"="rada_id"))%>%
-  group_by(faction.y, department)%>%
+  group_by(factions, department)%>%
   summarise(
     # У відсотках
     vote_for_perc = round(mean(vote_status == "За")*100, 1), 
@@ -251,7 +251,7 @@ act_amends_faction_depart_perc <- out_act_amends%>%
     vote_present_perc = round(mean(vote_status == "Присутній")*100, 1),
     vote_not_voting_perc = round(mean(vote_status == "Не голосував")*100, 1),
     vote_absent_perc = round(mean(vote_status == "Відсутній")*100, 1)) %>% 
-  arrange(vote_for_perc, faction.y)
+  arrange(vote_for_perc, factions)
 
 #### Крок. 9.8. По фракціях, %, long ####
 act_amends_faction_depart_perc_long <- act_amends_faction_depart_perc%>%
