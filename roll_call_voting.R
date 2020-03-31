@@ -51,6 +51,7 @@ mps09 <- function() {
   pers_vote$name[pers_vote$name ==  "Медяник В’ячеслав Анатолійович"] <- "Медяник В'ячеслав Анатолійович"
   pers_vote$name[pers_vote$name ==  "Салійчук Олександр В’ячеславович"] <- "Салійчук Олександр В'ячеславович"   
   pers_vote$name[pers_vote$name ==  "Циба Тетьяна Вікторівна"] <- "Циба Тетяна Вікторівна" 
+  pers_vote$name[pers_vote$name ==  "Красносільська Анастасія Олегівна"] <- "Радіна Анастасія Олегівна" # Changed surname in March 2020
   
   return(pers_vote)
 }
@@ -194,9 +195,10 @@ out <- cSplit(zp_names, "results", sep="|", "long")%>%
                               `3` = "Утримався",
                               `4` = "Не голосував",
                               `5` = "Присутній"))%>%
-  left_join(mps09, by=c("mps_id"="id_mp"))%>%
+  #left_join(mps_09, by=c("mps_id"="id_mp"))%>%
   left_join(factions_09, by=c("mps_id"="rada_id"))%>%
-  mutate(id_question=as.character(id_question))
+  mutate(id_question=as.character(id_question))%>%
+  mutate(mps_id=as.integer(mps_id))
 
 
 #### Крок 4. Групування і розшифровка  ####
