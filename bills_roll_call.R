@@ -1,5 +1,7 @@
 # Продовження роботи, для початку прогнати файл з персональним голосуванням roll_call_voting.R
 
+# Продовження роботи, для початку прогнати файл з персональним голосуванням roll_call_voting.R
+
 # У датафреймі з усіма законоавдчими активностями відфільтровуємо голосування і залишаємо 
 #### Проект, Проект Закону, Пропозиції Президента, Проект Постанови ####
 zp <- zp_names%>%
@@ -27,14 +29,16 @@ zp_out <- cSplit(zp, "results", sep="|", "long")%>%
                               `3` = "Утримався",
                               `4` = "Не голосував",
                               `5` = "Присутній"))%>%
-  left_join(mps09, by=c("mps_id"="id_mp"))%>%
-  left_join(factions_09, by=c("mps_id"="rada_id"))
+  left_join(factions_09, by=c("mps_id"="rada_id"))%>%
+  filter(date_end=="")%>%
+  mutate(id_question=as.character(id_question))%>%
+  mutate(mps_id=as.integer(mps_id))
 
 #### По фракціям у %  ####
 
 zp_out_factions_perc <- zp_out%>%
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>%    
+  #left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
+  #filter(date_end=="")%>%    
   group_by(factions)%>%
   summarise(
     
@@ -46,6 +50,9 @@ zp_out_factions_perc <- zp_out%>%
     vote_present = round(mean(vote_status == "Присутній")*100, 1),
     vote_not_voting = round(mean(vote_status == "Не голосував")*100, 1),
     vote_absent = round(mean(vote_status == "Відсутній")*100, 1)) %>% 
+  ungroup()%>%
+  mutate(uchast=vote_for+vote_abstain+vote_against)%>%
+  mutate(factions=as.factor(factions))%>%
   arrange(vote_for, factions)
 
 #### По фракціям, %, Long####
@@ -54,30 +61,28 @@ zp_out_factions_perc_long <- zp_out_factions_perc%>%
 
 #### По нардепам, абсол.числа ####
 zp_out_mps_n <- zp_out %>%
-  group_by(name, factions)%>%
+  group_by(fullname, mps_id, factions)%>%
   summarise(vote_for = sum(vote_status == "За"), 
             vote_against_ = sum(vote_status == "Проти"), 
             vote_abstain = sum(vote_status == "Утримався"),
             vote_present = sum(vote_status == "Присутній"),
             vote_not_voting = sum(vote_status == "Не голосував"),
             vote_absent = sum(vote_status == "Відсутній")) %>% 
-  left_join(mps_09, by=c("name"="full_name"))%>%
-  filter(date_end=="")
+  arrange(vote_for, fullname)
 
 #### По нардепам, % ####
 
 zp_out_mps_perc <- zp_out %>%
-  group_by(name, factions )%>%
+  group_by(fullname, mps_id, factions)%>%
   summarise(
-    vote_for_perc = round(mean(vote_status == "За")*100, 0), 
-    vote_abstain_perc = round(mean(vote_status == "Утримався")*100, 0),
-    vote_against_perc = round(mean(vote_status == "Проти")*100, 0), 
-    vote_present_perc = round(mean(vote_status == "Присутній")*100, 0),
-    vote_not_voting_perc = round(mean(vote_status == "Не голосував")*100, 0),
-    vote_absent_perc = round(mean(vote_status == "Відсутній")*100, 0)
+    vote_for_perc = round(mean(vote_status == "За")*100, 1), 
+    vote_abstain_perc = round(mean(vote_status == "Утримався")*100, 1),
+    vote_against_perc = round(mean(vote_status == "Проти")*100, 1), 
+    vote_present_perc = round(mean(vote_status == "Присутній")*100, 1),
+    vote_not_voting_perc = round(mean(vote_status == "Не голосував")*100, 1),
+    vote_absent_perc = round(mean(vote_status == "Відсутній")*100, 1)
     ) %>% 
-  left_join(mps_09, by=c("name"="full_name"))%>%
-  filter(date_end=="")
+  arrange(vote_for_perc, fullname)
 
 #### По нардепам, %, long ####
 
@@ -85,10 +90,10 @@ zp_out_mps_perc <- zp_out %>%
 zp_out_mps_perc_long <- zp_out_mps_perc%>%
   gather(status, n_vote, vote_for_perc:vote_absent_perc, factor_key = TRUE)
 
-### голосування за Проекти Закону ####
+### II. Проекти Закону ####
 
 zakon <- zp%>%
-  filter(type=="Проект Закону")
+  filter(type.x=="Проект Закону")
 
 # Як голосуютю по рубрикам ####
 
@@ -130,30 +135,27 @@ zakon_out <- cSplit(zakon, "results", sep="|", "long")%>%
                               `3` = "Утримався",
                               `4` = "Не голосував",
                               `5` = "Присутній"))%>%
-  left_join(mps09, by=c("mps_id"="id_mp"))%>%
-  left_join(factions_09, by=c("mps_id"="rada_id"))
+  left_join(factions_09, by=c("mps_id"="rada_id"))%>%
+  filter(date_end=="")%>%
+  mutate(id_question=as.character(id_question))%>%
+  mutate(mps_id=as.integer(mps_id))
 
 # ЗП по нардепам, абсол.числа  ####
 
 z_mps_n <- zakon_out %>%
-  group_by(name, factions)%>%
-  #group_by(name, faction)%>%
+  group_by(fullname, mps_id, factions)%>%
   summarise(vote_for = sum(vote_status == "За"), 
            vote_abstain = sum(vote_status == "Утримався"),
             vote_against_ = sum(vote_status == "Проти"), 
             vote_present = sum(vote_status == "Присутній"),
             vote_not_voting = sum(vote_status == "Не голосував"),
             vote_absent = sum(vote_status == "Відсутній")) %>% 
-  arrange(vote_for, name)%>%
-  left_join(mps_09, by=c("name"="full_name"))%>%
-  filter(date_end=="")%>%
-  select( -date_end)
+  arrange(vote_for, fullname)
 
 # ЗП по нардепах, % #### 
 
 z_mps_perc <- zakon_out %>%
-  #group_by(name, faction)%>%
-  group_by(name, factions)%>%
+  group_by(fullname, mps_id, factions)%>%
   summarise(
     # У відсотках
     vote_for = round(mean(vote_status == "За")*100, 0), 
@@ -162,15 +164,12 @@ z_mps_perc <- zakon_out %>%
     vote_present = round(mean(vote_status == "Присутній")*100, 0),
     vote_not_voting = round(mean(vote_status == "Не голосував")*100, 0),
     vote_absent = round(mean(vote_status == "Відсутній")*100, 0)) %>% 
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>% 
-  arrange(vote_for, name)
+  arrange(vote_for, fullname)
 
 # Те саме, але з розбивкою по рубрикам, у відсотках
 
 z_mps_perc_rubric <- zakon_out %>%
-  #group_by(name, faction)%>%
-  group_by(name, factions, rubric)%>%
+  group_by(fullname, factions, rubric)%>%
   summarise(
     # У відсотках
     vote_for = round(mean(vote_status == "За")*100, 0), 
@@ -179,9 +178,7 @@ z_mps_perc_rubric <- zakon_out %>%
     vote_present = round(mean(vote_status == "Присутній")*100, 0),
     vote_not_voting = round(mean(vote_status == "Не голосував")*100, 0),
     vote_absent = round(mean(vote_status == "Відсутній")*100, 0)) %>% 
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>% 
-  arrange(vote_for, name)
+  arrange(vote_for, fullname)
 
 # ЗП по нардепах, %, Long ####
 
@@ -191,8 +188,6 @@ z_mps_perc_rubric_long <- z_mps_perc_rubric%>%
 
 # ЗП по фракціях і головним комітетам, % ####
 z_faction_rubric_perc <- zakon_out%>%
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>%   
   group_by(factions, rubric)%>%
   summarise(
     # У відсотках
@@ -212,8 +207,6 @@ z_faction_rubric_perc_long <- z_faction_rubric_perc%>%
 # ЗП По фракціям, % ####
 
 z_factions_perc <- zakon_out%>%
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>%   
   group_by(factions)%>%
   summarise(
     # У відсотках
@@ -236,8 +229,6 @@ z_factions_perc_long <- z_factions_perc%>%
 # ЗП по фракціям і Комітетами, % ####
 
 z_faction_depart_perc <- zakon_out%>%
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>%   
   group_by(factions, department)%>%
   summarise(
     # У відсотках
@@ -258,9 +249,7 @@ z_faction_depart_perc_long <- z_faction_depart_perc%>%
 # ЗП по ПІБ, фракції і Комітетам, % ####
 
 z_mps_depart_perc <- zakon_out%>%
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>%   
-  group_by(name, factions, department)%>%
+  group_by(fullname, factions, department)%>%
   summarise(
     # У відсотках
     vote_for = round(mean(vote_status == "За")*100, 1), 
@@ -274,9 +263,7 @@ z_mps_depart_perc <- zakon_out%>%
 # ЗП по ПІБ, фракції і Комітетам, абсолютне число ####
 
 z_mps_depart_n <- zakon_out%>%
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>%   
-  group_by(name, factions, department)%>%
+  group_by(fullname, factions, department)%>%
   summarise(
     # У абсолютних числах
     vote_for = sum(vote_status == "За"), 
@@ -334,30 +321,27 @@ zp_wo_out <- cSplit(zp_wo_amends, "results", sep="|", "long")%>%
                               `3` = "Утримався",
                               `4` = "Не голосував",
                               `5` = "Присутній"))%>%
-  left_join(mps09, by=c("mps_id"="id_mp"))%>%
-  left_join(factions_09, by=c("mps_id"="rada_id"))
+  left_join(factions_09, by=c("mps_id"="rada_id"))%>%
+  filter(date_end=="")%>%
+  mutate(id_question=as.character(id_question))%>%
+  mutate(mps_id=as.integer(mps_id))
 
 # ЗП по нардепам, абсол.числа  ####
 
 zp_wo_mps_n <- zp_wo_out %>%
-  group_by(name, factions)%>%
-  #group_by(name, faction)%>%
+  group_by(fullname, factions)%>%
   summarise(vote_for = sum(vote_status == "За"), 
             vote_abstain = sum(vote_status == "Утримався"),
             vote_against_ = sum(vote_status == "Проти"), 
             vote_present = sum(vote_status == "Присутній"),
             vote_not_voting = sum(vote_status == "Не голосував"),
             vote_absent = sum(vote_status == "Відсутній")) %>% 
-  arrange(vote_for, name)%>%
-  left_join(mps_09, by=c("name"="full_name"))%>%
-  filter(date_end=="")%>%
-  select( -date_end)
+  arrange(vote_for, fullname)
 
 # ЗП по нардепах, % #### 
 
 zp_wo_mps_perc <- zp_wo_out %>%
-  #group_by(name, faction)%>%
-  group_by(name, factions)%>%
+  group_by(fullname, factions)%>%
   summarise(
     # У відсотках
     vote_for = round(mean(vote_status == "За")*100, 0), 
@@ -366,15 +350,12 @@ zp_wo_mps_perc <- zp_wo_out %>%
     vote_present = round(mean(vote_status == "Присутній")*100, 0),
     vote_not_voting = round(mean(vote_status == "Не голосував")*100, 0),
     vote_absent = round(mean(vote_status == "Відсутній")*100, 0)) %>% 
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>% 
-  arrange(vote_for, name)
+  arrange(vote_for, fullname)
 
 # Те саме, але з розбивкою по рубрикам, у відсотках
 
 zp_wo_mps_perc_rubric <- zp_wo_out %>%
-  #group_by(name, faction)%>%
-  group_by(name, factions, rubric)%>%
+  group_by(fullname, factions, rubric)%>%
   summarise(
     # У відсотках
     vote_for = round(mean(vote_status == "За")*100, 0), 
@@ -383,9 +364,7 @@ zp_wo_mps_perc_rubric <- zp_wo_out %>%
     vote_present = round(mean(vote_status == "Присутній")*100, 0),
     vote_not_voting = round(mean(vote_status == "Не голосував")*100, 0),
     vote_absent = round(mean(vote_status == "Відсутній")*100, 0)) %>% 
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>% 
-  arrange(vote_for, name)
+  arrange(vote_for, fullname)
 
 # ЗП по нардепах, %, Long ####
 
@@ -395,8 +374,6 @@ zp_wo_mps_perc_rubric_long <- zp_wo_mps_perc_rubric%>%
 
 # ЗП по фракціях і головним комітетам, % ####
 zp_wo_faction_rubric_perc <- zp_wo_out%>%
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>%   
   group_by(factions, rubric)%>%
   summarise(
     # У відсотках
@@ -416,8 +393,6 @@ zp_wo_faction_rubric_perc_long <- zp_wo_faction_rubric_perc%>%
 # ЗП По фракціям, % ####
 
 zp_wo_factions_perc <- zp_wo_out%>%
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>%   
   group_by(factions)%>%
   summarise(
     # У відсотках
@@ -440,8 +415,6 @@ zp_wo_factions_perc_long <- zp_wo_factions_perc%>%
 # ЗП по фракціям і Комітетами, % ####
 
 zp_wo_faction_depart_perc <- zp_wo_out%>%
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>%   
   group_by(factions, department)%>%
   summarise(
     # У відсотках
@@ -462,9 +435,7 @@ zp_wo_faction_depart_perc_long <- zp_wo_faction_depart_perc%>%
 # ЗП по ПІБ, фракції і Комітетам, % ####
 
 zp_wo_mps_depart_perc <- zp_wo_out%>%
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>%   
-  group_by(name, factions, department)%>%
+  group_by(fullname, factions, department)%>%
   summarise(
     # У відсотках
     vote_for = round(mean(vote_status == "За")*100, 1), 
@@ -478,9 +449,7 @@ zp_wo_mps_depart_perc <- zp_wo_out%>%
 # ЗП по ПІБ, фракції і Комітетам, абсолютне число ####
 
 zp_wo_mps_depart_n <- zp_wo_out%>%
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>%   
-  group_by(name, factions, department)%>%
+  group_by(fullname, factions, department)%>%
   summarise(
     # У абсолютних числах
     vote_for = sum(vote_status == "За"), 
@@ -490,4 +459,5 @@ zp_wo_mps_depart_n <- zp_wo_out%>%
     vote_not_voting = sum(vote_status == "Не голосував"),
     vote_absent = sum(vote_status == "Відсутній"))%>%
   arrange(vote_for, factions)
+
 
