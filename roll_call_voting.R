@@ -96,14 +96,14 @@ get_factions_open <- function(){
   mps <- read_csv("https://data.rada.gov.ua/ogd/mps/skl9/mps09-data.csv")
   
   factions_full <- posts %>% 
-    left_join(mps[, c("rada_id" ,"id", "full_name")], by = c("mp_id" = "id")) %>% 
+    left_join(mps[, c("rada_id" ,"id", "full_name", "date_end", "region_name")], by = c("mp_id" = "id")) %>% 
     left_join(posts_ids) %>% 
     filter(unit_type %in% c("grp", "fra")) %>% 
     select(mp_id, full_name, unit)
   
   factions_df <-  mps %>% 
-    filter(is.na(resignation_text)) %>% 
-    select(rada_id, id, full_name) %>% 
+    #filter(is.na(resignation_text)) %>% 
+    select(rada_id, id, full_name, region_name, date_end) %>% 
     left_join(factions_full, by = c("id" = "mp_id", "full_name")) %>% 
     mutate(unit = ifelse(is.na(unit), "Позафракційні", unit)) %>% 
     rename(factions = unit, fullname = full_name) %>% 
@@ -115,7 +115,10 @@ get_factions_open <- function(){
                              `Фракція політичної партії Всеукраїнське об'єднання "Батьківщина" у Верховній Раді України дев'ятого скликання` = "Батьківщина",
                              `Група "За майбутнє" у Верховній Раді України` = "За майбутнє",
                              `Група "ДОВІРА"`= "ДОВІРА"))%>%
-    mutate(rada_id=as.character(rada_id))
+    mutate(rada_id=as.character(rada_id)) %>% 
+    mutate(date_end = ifelse(is.na(date_end), "", date_end))%>% # Replace NA with a blank
+    mutate(region_name = ifelse(is.na(region_name), "", region_name)) # Replace NA with a blank
+  
   return(factions_df)
 }
 
@@ -195,10 +198,11 @@ out <- cSplit(zp_names, "results", sep="|", "long")%>%
                               `3` = "Утримався",
                               `4` = "Не голосував",
                               `5` = "Присутній"))%>%
-  #left_join(mps_09, by=c("mps_id"="id_mp"))%>%
   left_join(factions_09, by=c("mps_id"="rada_id"))%>%
+  filter(date_end=="")%>%
   mutate(id_question=as.character(id_question))%>%
   mutate(mps_id=as.integer(mps_id))
+
 
 
 #### Крок 4. Групування і розшифровка  ####
@@ -206,8 +210,8 @@ out <- cSplit(zp_names, "results", sep="|", "long")%>%
 # 4.1 По фракціям у відсотках
 
 out_factions_perc <- out%>%
-  left_join(mps_09, by=c("name"="full_name"))%>%  # ДФ з колонкою для філтрування date_end
-  filter(date_end=="")%>%                         # Прибираємо вибулих депутатів
+  #left_join(mps_09, by=c("mps_id"="rada_id"))%>%  # ДФ з колонкою для філтрування date_end
+  #filter(date_end=="")%>%                         # Прибираємо вибулих депутатів
   group_by(factions)%>%
   summarise(   
     # У відсотках
@@ -217,10 +221,11 @@ out_factions_perc <- out%>%
     vote_present_perc = round(mean(vote_status == "Присутній")*100, 1),
     vote_not_voting_perc = round(mean(vote_status == "Не голосував")*100, 1),
     vote_absent_perc = round(mean(vote_status == "Відсутній")*100, 1)) %>% 
-  mutate(factions=as.factor(factions))%>%
   ungroup()%>%
   mutate(uchast=vote_for_perc+vote_abstain_perc+vote_against_perc)%>%
-  arrange(uchast, factions)
+  mutate(factions=as.factor(factions))%>%
+  arrange(vote_for_perc, factions)
+
 
 # 4.1.a) По фракціям у відсотках, long
 
@@ -240,11 +245,7 @@ out_mps_n <- out %>%
             vote_present = sum(vote_status == "Присутній"),
             vote_not_voting = sum(vote_status == "Не голосував"),
             vote_absent = sum(vote_status == "Відсутній")) %>% 
-  arrange(vote_for, fullname)%>%
-  left_join(mps_09, by=c("fullname"="full_name"))%>%
-  #left_join(factions_09, by=c("mps_id"="rada_id"))%>%
-  filter(date_end=="")%>%
-  select( -rada_id)
+  arrange(vote_for, fullname)
 
 # 4.3 По нардепам у  відсотках
 
@@ -257,11 +258,7 @@ out_mps_perc <- out %>%
     vote_present_perc = round(mean(vote_status == "Присутній")*100, 0),
     vote_not_voting_perc = round(mean(vote_status == "Не голосував")*100, 0),
     vote_absent_perc = round(mean(vote_status == "Відсутній")*100, 0))%>%
-  arrange(vote_for_perc, fullname)%>%
-  left_join(mps_09, by=c("fullname"="full_name"))%>%
-  #left_join(factions_09, by=c("mps_id"="rada_id"))%>%
-  filter(date_end=="")%>%
-  select( -rada_id)
+  arrange(vote_for_perc, fullname)
 
 # # 4.3.a) По нардепам у  відсотках, long
 
