@@ -1,0 +1,60 @@
+# Голосування про призначення на посаду #
+# Переконатися в тому, що в робоче середовище вже завантажені файли персонального голосування і законодавча активність
+
+#  Постанови про призначення  ####
+
+work_position_voting <- read.csv("https://data.rada.gov.ua/ogd/zal/ppz/skl9/plenary_event_question-skl9.csv", 
+                                 fileEncoding = "UTF-8")%>%
+  select( -date_event, -type_event,  -id_question, -date_agenda, -name_event) %>%
+  left_join(personal_vote, by=c("id_event"="id_event"))%>%
+  filter(grepl("проект Постанови про призначення", name_event))%>%
+  mutate(id_question=as.character(id_question))%>%
+  left_join(agenda, by=c("id_question"="id_question"))%>%
+  # Download bills in bills_09.R
+  left_join(bills_main_skl9, by=c("number_question"="number"))%>%
+  left_join(bills_executives, by=c("bill_id"="bill_id")) %>% 
+  filter(!id_event %in% c(6776, 3809))#  Підтягується зайва інформація, необзідно слідкувати і відфільтровувати
+  
+  
+  
+# Поіменка ####
+
+out_work <- function() {
+  
+  out_work <- cSplit(work_position_voting, "results", sep="|", "long")%>%
+    separate(results, c("mps_id", "faction", "vote_status"), ":")%>%
+    mutate(faction = recode(faction,
+                            `0` = "Позафракційні",
+                            `1` = "Слуга Народу",
+                            `2` = "ОПЗЖ",
+                            `3` = "Батьківщина",
+                            `4` = "ЄС",
+                            `5` = "ГОЛОС",
+                            `6` = "За майбутнє",
+                            `7`="ДОВІРА",
+                            `8` = "За майбутнє"))%>%
+    mutate(vote_status = recode(vote_status,
+                                `0` = "Відсутній",
+                                `1` = "За",
+                                `2` = "Проти",
+                                `3` = "Утримався",
+                                `4` = "Не голосував",
+                                `5` = "Присутній"))
+  
+  
+  out_work$mps_id[out_work$mps_id ==  "208"] <- "438" # Radina-Krasnosilska changed the surname in March 2020
+  
+  out_work <- out_work%>%
+    left_join(factions_09, by=c("mps_id"="rada_id"))%>%
+    filter(date_end=="")%>%
+    mutate(id_question=as.character(id_question))%>%
+    mutate(mps_id=as.integer(mps_id))
+  
+  return(out_work)
+}
+
+out_work <- out_work()
+
+
+
+
