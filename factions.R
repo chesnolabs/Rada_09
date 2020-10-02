@@ -5,7 +5,7 @@ get_factions_open <- function(){
   posts <- read_csv("https://data.rada.gov.ua/ogd/mps/skl9/mp-posts_ids.csv")
   posts_ids <- read_tsv("https://data.rada.gov.ua/ogd/mps/skl9/mp-posts_unit.txt", 
                         locale(encoding = "windows-1251"), col_names = F, col_types = NULL) %>% 
-    rename(unit_id = X1, unit = X2)
+    dplyr::rename(unit_id = X1, unit = X2)
   mps <- read_csv("https://data.rada.gov.ua/ogd/mps/skl9/mps09-data.csv")
   
   factions_full <- posts %>% 
@@ -19,7 +19,7 @@ get_factions_open <- function(){
     select(rada_id, id, full_name, region_name, date_end, gender) %>% 
     left_join(factions_full, by = c("id" = "mp_id", "full_name")) %>% 
     mutate(unit = ifelse(is.na(unit), "Позафракційні", unit)) %>% 
-    rename(factions = unit, fullname = full_name) %>% 
+    dplyr::rename(factions = unit, fullname = full_name) %>% 
     mutate(factions = recode(factions, 
                              `Фракція ПОЛІТИЧНОЇ ПАРТІЇ "СЛУГА НАРОДУ"` = "Слуга Народу",
                              `Фракція Політичної Партії "ГОЛОС" у Верховній Раді України дев'ятого скликання` = "ГОЛОС",
