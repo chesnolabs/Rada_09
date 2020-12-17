@@ -11,6 +11,7 @@ library(xlsx)
 library(splitstackshape) # https://stackoverflow.com/questions/15097162/splitting-strings-into-multiple-rows-in-r
 library(purrr)
 library(rJava)
+library(openxlsx)
 
 #### Крок 1. Завантажуємо законодавчу частину ####
 
@@ -269,24 +270,26 @@ out_mps_perc_long <- out_mps_perc%>%
 
 #### Крок 5. Writa data ####
 
-dir.create("output_cumulative")
+dir.create("output_cumulative/data")
 
-write.xlsx(as.data.frame(personal_vote), 
-           file=paste0("output_cumulative/personal_vote", ".xlsx"),
-           sheetName="personal_vote", row.names=FALSE, append = FALSE)
+hs <- createStyle(textDecoration = "BOLD", fontColour = "#FFFFFF", fontSize=12,
+                  fontName="Arial", fgFill = "#4F80BD")
 
-write.xlsx(as.data.frame(zp_names), 
-           file=paste0("output_cumulative/personal_voting", ".xlsx"),
-           sheetName="Голосування з назвами законопроектів наростаюче", row.names=FALSE, append = TRUE)
+now_date <- "16_12_2020"
 
-write.xlsx(as.data.frame(out_mps_n), 
-           file=paste0("output_cumulative/personal_voting", ".xlsx"),
-           sheetName="Нардепи наростаюче за увесь час", row.names=FALSE, append = TRUE)
+# Save multiple sheets in one file
+list_of_datasets <- list("personal_vote" = personal_vote, 
+                         "Законопроекти_наростаючі" = zp_names,
+                         "Нардепи наростаюче" = out_mps_n, 
+                         "Нардепи_%" = out_mps_perc,
+                         "Фракції_%_наростаюче"= out_factions_perc
+                         )
 
-write.xlsx(as.data.frame(out_mps_perc), 
-           file=paste0("output_cumulative/personal_voting", ".xlsx"),
-           sheetName="За нардепами наростаюче голосування у %", row.names=FALSE, append = TRUE)
+# library(openxlsx) is faster comparing to library(xlsx)
+openxlsx::write.xlsx(list_of_datasets, 
+                     file=paste0("output_cumulative/data/personal_vote", 
+                                                   now_date, ".xlsx"),
+                     row.names=FALSE, headerStyle=hs,
+                     append = FALSE, colNames = TRUE, 
+                     borders = "surrounding")
 
-write.xlsx(as.data.frame(out_factions_perc), 
-           file=paste0("output_cumulative/personal_voting", ".xlsx"),
-           sheetName="За фракціями наростаюче голосування у %", row.names=FALSE, append = TRUE)
