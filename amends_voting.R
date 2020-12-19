@@ -126,27 +126,26 @@ out_amends_mps_perc <- out_amends %>%
 
 #### Крок 8. Запис у файл ####
 
-dir.create("output_cumulative")
 
-write.xlsx(as.data.frame(amendments_voting), 
-           file=paste0("output_cumulative/amends_voting", ".xlsx"),
-           sheetName="Голосування за поправки", row.names=FALSE, append = FALSE)
+# Save multiple sheets in one file
 
-write.xlsx(as.data.frame(out_amends_factions_perc), 
-           file=paste0("output_cumulative/amends_voting", ".xlsx"),
-           sheetName="Фракції за поправки у відсотках", row.names=FALSE, append = TRUE)
+dir.create("output_cumulative/data")
 
-write.xlsx(as.data.frame(amends_faction_depart_perc), 
-           file=paste0("output_cumulative/amends_voting", ".xlsx"),
-           sheetName="Фракції за поправки+комітет у %", row.names=FALSE, append = TRUE)
+now_date <- "_19_12_2020"
 
-write.xlsx(as.data.frame(out_amends_mps_n), 
-           file=paste0("output_cumulative/amends_voting", ".xlsx"),
-           sheetName="Нардепи за поправки у числах", row.names=FALSE, append = TRUE)
+list_of_datasets <- list("Голосування за поправки" = amendments_voting, 
+                         "Фракції за поправки у відсотках" = out_amends_factions_perc,
+                         "Фракції за поправки+комітет у %" = amends_faction_depart_perc, 
+                         "Нардепи за поправки у числах%" = out_amends_mps_n,
+                         "Нардепи за поправки у відсотках"= out_amends_mps_perc
+)
 
-write.xlsx(as.data.frame(out_amends_mps_perc), 
-           file=paste0("output_cumulative/amends_voting", ".xlsx"),
-           sheetName="Нардепи за поправки у відсотках", row.names=FALSE, append = TRUE)
+openxlsx::write.xlsx(list_of_datasets, 
+                     file=paste0("output_cumulative/data/amends_voting", 
+                                 now_date, ".xlsx"),
+                     row.names=FALSE, headerStyle=hs,
+                     append = FALSE, colNames = TRUE, 
+                     borders = "surrounding")
 
 
 
