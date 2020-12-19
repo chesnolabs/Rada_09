@@ -286,19 +286,29 @@ act_amends_faction_depart_perc_long <- act_amends_faction_depart_perc_long%>%
 
 ##### Записати файл: поправки 225+1 ####
 
-write.xlsx(as.data.frame(out_act_amends_factions_perc), 
-           file=paste0("output_cumulative/amends_voting", ".xlsx"),
-           sheetName="Фракції_за_поправки_226_%", row.names=FALSE, append = TRUE)
+#
+library(openxlsx)
 
-write.xlsx(as.data.frame(act_amends_faction_depart_perc), 
-           file=paste0("output_cumulative/amends_voting", ".xlsx"),
-           sheetName="Фракції_за_поправки+комітет_226_%", row.names=FALSE, append = TRUE)
+hs <- createStyle(textDecoration = "BOLD", fontColour = "#FFFFFF", fontSize=12,
+                  fontName="Arial", fgFill = "#4F80BD")
 
-write.xlsx(as.data.frame(act_amends_mps_n), 
-           file=paste0("output_cumulative/amends_voting", ".xlsx"),
-           sheetName="Нардепи_за_поправки_226_у_числах", row.names=FALSE, append = TRUE)
 
-write.xlsx(as.data.frame(act_amends_mps_perc), 
-           file=paste0("output_cumulative/amends_voting", ".xlsx"),
-           sheetName="Нардепи_за_поправки_226_у_%", row.names=FALSE, append = TRUE)
+# Save multiple sheets in one file
+
+list_of_datasets <- list("Голосування за поправки" = amendments_voting, 
+                         "Голосування за поправки 226" = act_amends,
+                         "Фракції_за_поправки_226_%" = out_act_amends_factions_perc, 
+                         "Фракції_за_поправки+комітет_226_%" = act_amends_faction_depart_perc,
+                         
+                         "Нардепи_за_поправки_226_у_числах"= act_amends_mps_n,
+                         "Нардепи_за_поправки_226_у_%"=act_amends_mps_perc
+)
+
+openxlsx::write.xlsx(list_of_datasets, 
+                     file=paste0("output_cumulative/data/amendments_voting", 
+                                 now_date, ".xlsx"),
+                     row.names=FALSE, headerStyle=hs,
+                     append = FALSE, colNames = TRUE, 
+                     borders = "surrounding")
+
 
