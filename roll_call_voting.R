@@ -13,7 +13,7 @@ library(purrr)
 library(rJava)
 library(openxlsx)
 
-#### Крок 1. Завантажуємо законодавчу частину ####
+# 1. Завантажуємо законопроекти ####
 
 # Законопроекти, що зареєстровано у Верховній Раді 9 скликання
 # https://data.rada.gov.ua/open/data/bills_main-skl9
@@ -30,18 +30,20 @@ bills_executives <- read.csv("https://data.rada.gov.ua/ogd/zpr/skl9/bills_execut
   filter(type=="mainExecutive")%>%
   select(-convocation, -person_id, -organization, -post)
 
-#### Крок 2. Завантажуємо інформація про нардепів, фракції та адженду ####
+# 2. Завантажуємо інформація про нардепів, фракції та адженду ####
 
-#### Крок 2.1 ####
+# 2.1 ####
+
 # ПІБ нардепів, стать та Ідентифікаціний код, пофіксовані ПІБ з апостофами 
 # MPs, Sex and ID for personal voting, NAMES FIXED
+# Необхідно слідкувати за тим, чи нардепи змінюють прізвища. Якщо так, то фіксимо це у цій функції
+
 mps09 <- function() {
   
   mps09 <- fromJSON(readLines(file("http://w1.c1.rada.gov.ua/pls/radan_gs09/od_data_dep?type_data=j")))
   pers_vote <- mps09$mp
   
-  # Fix names according to names of MPs in main mps_09 DF and factions_09 DF
-  
+  # Fix names according to names of MPs in main mps_09 DF and factions_09 DF  
   pers_vote$name[pers_vote$name == "Ар’єв Володимир Ігорович"] <- "Ар'єв Володимир Ігорович"
   pers_vote$name[pers_vote$name == "Безугла Мар’яна Володимирівна"] <- "Безугла Мар'яна Володимирівна"
   pers_vote$name[pers_vote$name ==  "Володіна Дар’я Артемівна"] <- "Володіна Дар'я Артемівна"
@@ -52,18 +54,18 @@ mps09 <- function() {
   pers_vote$name[pers_vote$name ==  "Медяник В’ячеслав Анатолійович"] <- "Медяник В'ячеслав Анатолійович"
   pers_vote$name[pers_vote$name ==  "Салійчук Олександр В’ячеславович"] <- "Салійчук Олександр В'ячеславович"   
   pers_vote$name[pers_vote$name ==  "Циба Тетьяна Вікторівна"] <- "Циба Тетяна Вікторівна" 
-  pers_vote$name[pers_vote$name ==  "Красносільська Анастасія Олегівна"] <- "Радіна Анастасія Олегівна" # Changed surname in March 2020
+  pers_vote$name[pers_vote$name ==  "Красносільська Анастасія Олегівна"] <- "Радіна Анастасія Олегівна" # She changed her surname in March 2020
   
   return(pers_vote)
 }
 mps09 <- mps09()  
 
-#### Крок 2.2. ####
+# 2.2. ####
 mps_09 <- read.csv("https://data.rada.gov.ua/ogd/mps/skl9/mps09-data.csv", fileEncoding = "UTF-8")%>%
   select(rada_id, full_name, region_name, date_end)
 
 
-#### Крок 2.3. ####
+# 2.3. ####
 # The Factions IDs' to decrypt the roll-call voting
 
 factions <- function() {
@@ -86,7 +88,7 @@ factions <- function() {
 
 factions <- factions()
 
-#### Крок 2.4. ####
+# 2.4. ####
 # The Factions from the Open Data Portral 
 
 get_factions_open <- function(){
@@ -125,7 +127,7 @@ get_factions_open <- function(){
 
 factions_09 <- get_factions_open()
 
-#### Крок 2.5. Аджена ####
+# 2.5. Аджена ####
 # Agenda: id_question, name_question
 
 agenda <- function(){
@@ -145,26 +147,26 @@ agenda <- function(){
 
 agenda <- agenda()
 
-#### Крок 2.6. Події у ВРУ з таймінгом ####
+# 2.6. Події у ВРУ з таймінгом ####
 event_question <- read.csv("https://data.rada.gov.ua/ogd/zal/ppz/skl9/plenary_event_question-skl9.csv", 
                            fileEncoding = "UTF-8")%>%
   select(-date_agenda, -id_question, -date_question)
 
-#####  Крок 2.7. Результати поіменного голосування депутатів 9 скл ####
+# 2.7. Результати поіменного голосування депутатів 9 скл ####
 # https://data.rada.gov.ua/open/data/plenary_vote_results-skl9
 
 personal_vote <- read.delim("https://data.rada.gov.ua/ogd/zal/ppz/skl9/plenary_vote_results-skl9.tsv")%>%
   mutate(id_question=as.character(id_question))%>%
   left_join(event_question, by=c("id_event"="id_event"))
 
-#### Крок 2.8. Приєднуємо усі законодавчі активності ####   
+# 2.8. Приєднуємо усі законодавчі активності ####   
 
 zp_names <- personal_vote%>%
   left_join(agenda, by=c("id_question"="id_question"))%>%
   left_join(bills_main_skl9, by=c("number_question"="number"))%>%
   left_join(bills_executives, by=c("bill_id"="bill_id"))
 
-#### Крок 2.9. reporter_question
+# 2.9. reporter_question
 # https://data.rada.gov.ua/open/data/plenary_reporter_question-skl9
 
 reporter_question <- read.csv("https://data.rada.gov.ua/ogd/zal/ppz/skl9/plenary_reporter_question-skl9.csv", 
@@ -176,7 +178,7 @@ reporter_question <- read.csv("https://data.rada.gov.ua/ogd/zal/ppz/skl9/plenary
   select(-rada_id, -id)%>%
   left_join(zp_names, by=c("number_question"="number_question"))
 
-#### Крок 3. Поіменка ####
+# 3. Поіменка ####
 
 # Крок 3.1 Personal voting into rows
 # https://stackoverflow.com/questions/15097162/splitting-strings-into-multiple-rows-in-r
@@ -205,14 +207,11 @@ out <- cSplit(zp_names, "results", sep="|", "long")%>%
   mutate(mps_id=as.integer(mps_id))
 
 
-
-#### Крок 4. Групування і розшифровка  ####
+# Групування і розшифровка  ####
 
 # 4.1 По фракціям у відсотках
 
 out_factions_perc <- out%>%
-  #left_join(mps_09, by=c("mps_id"="rada_id"))%>%  # ДФ з колонкою для філтрування date_end
-  #filter(date_end=="")%>%                         # Прибираємо вибулих депутатів
   group_by(factions)%>%
   summarise(   
     # У відсотках
@@ -238,7 +237,6 @@ out_factions_perc_long <- out_factions_perc%>%
 # 4.2 По нардепам у кількості
 
 out_mps_n <- out %>%
-  #mutate(mps_id=as.integer(mps_id))%>%
   group_by(fullname, mps_id, factions)%>%
   summarise(vote_for = sum(vote_status == "За"), 
             vote_abstain = sum(vote_status == "Утримався"),
@@ -261,21 +259,23 @@ out_mps_perc <- out %>%
     vote_absent_perc = round(mean(vote_status == "Відсутній")*100, 0))%>%
   arrange(vote_for_perc, fullname)
 
-# # 4.3.a) По нардепам у  відсотках, long
+# 4.3.a) По нардепам у  відсотках, long
 
 out_mps_perc_long <- out_mps_perc%>%
   gather(vote_status, n_vote, vote_for_perc:vote_absent_perc)%>%
   filter(!vote_status=="vote_present_perc")
 
 
-#### Крок 5. Writa data ####
-
-dir.create("output_cumulative/data")
-
-hs <- createStyle(textDecoration = "BOLD", fontColour = "#FFFFFF", fontSize=12,
-                  fontName="Arial", fgFill = "#4F80BD")
+# 5. Writa data ####
 
 now_date <- "16_12_2020"
+dir.create("output_cumulative/data")
+
+hs <- createStyle(textDecoration = "BOLD", 
+                  fontColour = "#FFFFFF", 
+                  fontSize=12,
+                  fontName="Arial", 
+                  fgFill = "#4F80BD")
 
 # Save multiple sheets in one file
 list_of_datasets <- list("personal_vote" = personal_vote, 
