@@ -119,6 +119,8 @@ get_factions_open <- function(){
                              `Група "За майбутнє" у Верховній Раді України` = "За майбутнє",
                              `Група "ДОВІРА"`= "ДОВІРА"))%>%
     mutate(rada_id=as.character(rada_id)) %>% 
+      mutate(rada_id=recode(rada_id, 
+                          "208|438"="438"))%>% # Radina-Krasnosilska 
     mutate(date_end = ifelse(is.na(date_end), "", date_end))%>% # Replace NA with a blank
     mutate(region_name = ifelse(is.na(region_name), "", region_name)) # Replace NA with a blank
   
