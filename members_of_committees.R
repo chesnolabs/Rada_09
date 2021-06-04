@@ -84,4 +84,8 @@ membership_k_short <- membership_k %>%  #
                              "Комітет з питань молоді і спорту"="Молоді та спорту")
   )
 
-
+# Скільки депутатів в комітетах 
+membership_k_short %>% 
+  group_by(department_k) %>% 
+  summarise(n=n()) %>% 
+  arrange(desc=TRUE)
